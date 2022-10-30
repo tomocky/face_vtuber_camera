@@ -5039,7 +5039,7 @@ GameObject:
   - component: {fileID: 4715050493266201433}
   - component: {fileID: 5424949375392486489}
   m_Layer: 0
-  m_Name: FaceSample
+  m_Name: FaceSampleAlpha
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

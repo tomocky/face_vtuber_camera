@@ -9,6 +9,7 @@ using VRM;
 
 public class FaceTrackingManager : MonoBehaviour
 {
+    [SerializeField] [System.Obsolete] private ARSessionOrigin arSessionOrigin;
     [SerializeField] private ARFaceManager faceManager;
     [SerializeField] private GameObject avatarPrefab;
     [SerializeField] private Slider xPoint;
@@ -29,15 +30,13 @@ public class FaceTrackingManager : MonoBehaviour
 
         // 初期状態で後ろを向いてるため180度回転
         //avatar.transform.Rotate(new Vector3(0f, 180f, 0));
-        avatar.transform.Rotate(new Vector3(0f, 0f, 0));
 
         // 必要な首の関節のTransformを取得
-        var animator = avatar.GetComponent<Animator>();
+        var animator = avatar.transform.GetChild(0).gameObject.GetComponent<Animator>();
         neck = animator.GetBoneTransform(HumanBodyBones.Neck);
 
-        // アバターの原点座標は足元のため、顔の高さを一致させるためにオフセットを取得
-        var head = animator.GetBoneTransform(HumanBodyBones.Head);
-        headOffset = new Vector3(head.position.x, head.position.y, head.position.z);
+        //headOffset = new Vector3(head.position.x, head.position.y, head.position.z);
+        headOffset = new Vector3(0,0.0618f, 0.004463669f);
 
         // VRMの表情を変化させるためのVRMBlendShapeProxyを取得
         blendShapeProxy = avatar.GetComponent<VRMBlendShapeProxy>();
@@ -72,7 +71,7 @@ public class FaceTrackingManager : MonoBehaviour
     {
         // アバターの位置と顔の向きを更新
         avatar.transform.position = arFace.transform.position - headOffset - headSettingParam;
-        neck.localRotation = arFace.transform.rotation;
+        avatar.transform.localRotation = arFace.transform.rotation;
     }
 
     private void UpdateBlendShape(ARFace arFace)
@@ -107,7 +106,7 @@ public class FaceTrackingManager : MonoBehaviour
         avatar.transform.localScale = new Vector3(lScale.x * objectScale.value, lScale.y * objectScale.value, lScale.z * objectScale.value);
     }
 
-    public void UpdateAvatarPositionDep()
+    public void UpdateAvatarPositionDepth()
     {
         // アバターの位置と顔の向きを更新
         Vector3 depth = new Vector3(0, 0, zPoint.value);
