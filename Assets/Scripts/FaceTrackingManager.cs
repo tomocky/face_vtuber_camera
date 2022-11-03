@@ -1,0 +1,130 @@
+using System.Collections.Generic;
+using Unity.Collections;
+using UnityEngine;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARKit;
+using UnityEngine.XR.ARSubsystems;
+using UnityEngine.UI;
+using VRM;
+
+public class FaceTrackingManager : MonoBehaviour
+{
+    [SerializeField] [System.Obsolete] private ARSessionOrigin arSessionOrigin;
+    [SerializeField] private ARFaceManager faceManager;
+    [SerializeField] private GameObject avatarPrefab;
+    [SerializeField] private GameObject particlePrefab;
+    [SerializeField] private Slider xPoint;
+    [SerializeField] private Slider yPoint;
+    [SerializeField] private Slider zPoint;
+    [SerializeField] private Slider objectScale;
+    ARKitFaceSubsystem faceSubsystem;
+    GameObject avatar;
+    GameObject faceParticle;
+    bool isFaceParticleVisible = false;
+    Transform neck;
+    Vector3 headSettingParam;
+    Vector3 headOffset;
+    VRMBlendShapeProxy blendShapeProxy;
+
+    private void Start()
+    {
+        faceSubsystem = (ARKitFaceSubsystem)faceManager.subsystem;
+        avatar = Instantiate(avatarPrefab);
+        faceParticle = Instantiate(particlePrefab);
+
+        // 初期非表示に設定
+        faceParticle.gameObject.SetActive(isFaceParticleVisible);
+
+        // 初期状態で後ろを向いてるため180度回転
+        //avatar.transform.Rotate(new Vector3(0f, 180f, 0));
+
+        // 必要な首の関節のTransformを取得
+        var animator = avatar.transform.GetChild(0).gameObject.GetComponent<Animator>();
+        neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+
+        //headOffset = new Vector3(head.position.x, head.position.y, head.position.z);
+        headOffset = new Vector3(0,0.0618f, 0.004463669f);
+
+        // VRMの表情を変化させるためのVRMBlendShapeProxyを取得
+        blendShapeProxy = avatar.GetComponent<VRMBlendShapeProxy>();
+    }
+
+    private void OnEnable()
+    {
+        faceManager.facesChanged += OnFaceChanged;
+    }
+
+    private void OnDisable()
+    {
+        faceManager.facesChanged -= OnFaceChanged;
+    }
+
+    private void OnFaceChanged(ARFacesChangedEventArgs eventArgs)
+    {
+        if (eventArgs.updated.Count != 0)
+        {
+            var arFace = eventArgs.updated[0];
+            if (arFace.trackingState == TrackingState.Tracking
+                && (ARSession.state > ARSessionState.Ready))
+            {
+                UpdateAvatarScale();
+                UpdateAvatarPosition(arFace);
+                UpdateBlendShape(arFace);
+            }
+        }
+    }
+
+    private void UpdateAvatarPosition(ARFace arFace)
+    {
+        // アバターの位置と顔の向きを更新
+        avatar.transform.position = arFace.transform.position - headOffset - headSettingParam;
+        faceParticle.transform.localPosition = arFace.transform.localPosition;
+        avatar.transform.localRotation = arFace.transform.rotation;
+    }
+
+    private void UpdateBlendShape(ARFace arFace)
+    {
+        // 瞬きと口の開き具合を取得して、アバターに反映
+        var blendShapesVRM = new Dictionary<BlendShapeKey, float>();
+        using var blendShapesARKit = faceSubsystem.GetBlendShapeCoefficients(arFace.trackableId, Allocator.Temp);
+
+        foreach (var featureCoefficient in blendShapesARKit)
+        {
+            if (featureCoefficient.blendShapeLocation == ARKitBlendShapeLocation.EyeBlinkLeft)
+            {
+                blendShapesVRM.Add(BlendShapeKey.CreateFromPreset(BlendShapePreset.Blink_L), featureCoefficient.coefficient);
+            }
+            if (featureCoefficient.blendShapeLocation == ARKitBlendShapeLocation.EyeBlinkRight)
+            {
+                blendShapesVRM.Add(BlendShapeKey.CreateFromPreset(BlendShapePreset.Blink_R), featureCoefficient.coefficient);
+            }
+            if (featureCoefficient.blendShapeLocation == ARKitBlendShapeLocation.JawOpen)
+            {
+                blendShapesVRM.Add(BlendShapeKey.CreateFromPreset(BlendShapePreset.O), featureCoefficient.coefficient);
+            }
+        }
+        blendShapeProxy.SetValues(blendShapesVRM);
+    }
+
+    public void UpdateAvatarScale()
+    {
+        // アバターの位置と顔の向きを更新
+        headSettingParam = new Vector3(xPoint.value, yPoint.value, 0);
+        Vector3 lScale = avatarPrefab.transform.localScale;
+        avatar.transform.localScale = new Vector3(lScale.x * objectScale.value, lScale.y * objectScale.value, lScale.z * objectScale.value);
+    }
+
+    public void UpdateAvatarPositionDepth()
+    {
+        // アバターの位置と顔の向きを更新
+        Vector3 depth = new Vector3(0, 0, zPoint.value);
+        avatar.transform.position = avatar.transform.position - depth;
+    }
+
+    public void ParticleSampleSwitch()
+    {
+        // 顔演出の表示非表示切り替え 
+        isFaceParticleVisible = !isFaceParticleVisible;
+        faceParticle.gameObject.SetActive(isFaceParticleVisible);
+    }
+}
