@@ -46,7 +46,7 @@ public class FaceTrackingManager : MonoBehaviour
         headOffset = new Vector3(0,0.0618f, 0.004463669f);
 
         // VRMの表情を変化させるためのVRMBlendShapeProxyを取得
-        blendShapeProxy = avatar.GetComponent<VRMBlendShapeProxy>();
+        blendShapeProxy = avatar.transform.GetChild(0).gameObject.GetComponent<VRMBlendShapeProxy>();
     }
 
     private void OnEnable()
